@@ -43,12 +43,12 @@ const App: React.FC = () => {
       if (!res.ok) throw new Error('Bad status');
       const data: Slot[] = await res.json();
       setSlots(data);
-    } finally {
-      setLoadingSlots(false);
     } catch {
       // если сервер недоступен — показываем локально сгенерированные слоты
       const fallback = generateLocalSlots(date);
       setSlots(fallback);
+    } finally {
+      setLoadingSlots(false);
     }
   }
 
