@@ -19,15 +19,16 @@ body,
 }
 
 body {
-  background: linear-gradient(180deg, #f9fafb, #e5e7eb);
+  background: #ffffff;
 }
 
 .app {
   min-height: 100vh;
-  padding: 12px 12px 24px;
+  height: 100vh;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 6px;
 }
 
 .app-header {
@@ -73,9 +74,9 @@ body {
 
 .app-content {
   background: #ffffff;
-  border-radius: 16px;
-  padding: 12px;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+  border-radius: 0;
+  padding: 10px 12px 12px;
+  box-shadow: none;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -101,6 +102,7 @@ body {
 .day-btn {
   min-width: 72px;
   padding: 6px 8px;
+  height: 56px;
   border-radius: 12px;
   border: none;
   background: #f3f4f6;
@@ -128,8 +130,8 @@ body {
 }
 
 .slots-grid {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   overflow-y: auto;
   padding-right: 2px;
@@ -140,6 +142,7 @@ body {
   text-align: left;
   padding: 10px 12px;
   border-radius: 12px;
+  min-height: 56px;
   border: none;
   display: flex;
   justify-content: space-between;
@@ -155,11 +158,6 @@ body {
   cursor: pointer;
 }
 
-.slot-card.free:active {
-  transform: scale(0.98);
-  box-shadow: 0 2px 6px rgba(22, 101, 52, 0.3);
-}
-
 .slot-card.mine {
   background: #eff6ff;
   color: #1d4ed8;
@@ -173,6 +171,11 @@ body {
 .slot-cta {
   font-size: 12px;
   font-weight: 500;
+}
+
+.slot-time {
+  font-weight: 600;
+  font-size: 14px;
 }
 
 .state-text {
