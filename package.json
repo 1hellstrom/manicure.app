@@ -6,8 +6,10 @@
     "dev": "concurrently \"npm:dev:server\" \"npm:dev:web\"",
     "dev:web": "vite",
     "dev:server": "ts-node-dev --respawn --transpile-only server/index.ts",
-    "build": "vite build",
-    "preview": "vite preview"
+    "build": "tsc",
+    "build:web": "vite build",
+    "preview": "vite preview",
+    "start": "node dist/server/index.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

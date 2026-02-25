@@ -10,6 +10,7 @@ declare global {
 }
 
 const API_BASE = '/api';
+const USE_API = import.meta.env.DEV;
 
 const App: React.FC = () => {
   const [userId, setUserId] = useState<string | null>(null);
@@ -21,12 +22,42 @@ const App: React.FC = () => {
   const [bookingLoading, setBookingLoading] = useState<string | null>(null);
 
   useEffect(() => {
+    // Логи для проверки наличия Telegram WebApp окружения
+    // Эти console.log помогут увидеть, что именно приходит с Telegram на проде
+    // eslint-disable-next-line no-console
+    console.log('window.Telegram:', window.Telegram);
+    // eslint-disable-next-line no-console
+    console.log('window.Telegram?.WebApp:', window.Telegram?.WebApp);
+
     const tg = window.Telegram?.WebApp;
     if (tg) {
-      tg.ready();
-      const id = tg.initDataUnsafe?.user?.id;
-      if (id) setUserId(String(id));
-      tg.expand();
+      try {
+        tg.ready();
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error('Telegram WebApp.ready error', e);
+      }
+
+      // eslint-disable-next-line no-console
+      console.log('tg.initDataUnsafe:', tg?.initDataUnsafe);
+
+      const id = tg?.initDataUnsafe?.user?.id;
+      if (id) {
+        setUserId(String(id));
+      } else {
+        // eslint-disable-next-line no-console
+        console.warn('Telegram user id not found in initDataUnsafe.user.id');
+      }
+
+      try {
+        tg.expand();
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error('Telegram WebApp.expand error', e);
+      }
+    } else {
+      // eslint-disable-next-line no-console
+      console.warn('Telegram WebApp is not available on window');
     }
   }, []);
 
@@ -35,18 +66,26 @@ const App: React.FC = () => {
   }, [selectedDate, userId]);
 
   async function loadSlots(date: string) {
+    setLoadingSlots(true);
+
+    // В production не ходим на API, а всегда используем локальные слоты
+    if (!USE_API) {
+      const fallback = generateLocalSlots(date);
+      setSlots(fallback);
+      setLoadingSlots(false);
+      return;
+    }
+
     try {
-      setLoadingSlots(true);
       const params = new URLSearchParams({ date });
       if (userId) params.append('userId', userId);
       const res = await fetch(`${API_BASE}/slots?${params.toString()}`);
       if (!res.ok) throw new Error('Bad status');
       const data: Slot[] = await res.json();
       setSlots(data);
-    } catch {
-      // если сервер недоступен — показываем локально сгенерированные слоты
-      const fallback = generateLocalSlots(date);
-      setSlots(fallback);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to load slots from API', e);
     } finally {
       setLoadingSlots(false);
     }
@@ -54,6 +93,10 @@ const App: React.FC = () => {
 
   async function loadMyBookings() {
     if (!userId) return;
+
+    // В production не трогаем API, профиль заполняется только локально
+    if (!USE_API) return;
+
     try {
       const res = await fetch(`${API_BASE}/me/bookings?userId=${userId}`);
       if (!res.ok) throw new Error('Bad status');
@@ -66,10 +109,30 @@ const App: React.FC = () => {
 
   async function handleBook(slotId: string) {
     if (!userId) {
-      alert('Не удалось получить ваш ID из Telegram.');
+      // eslint-disable-next-line no-console
+      console.error('Cannot book slot: Telegram userId is missing');
       return;
     }
     setBookingLoading(slotId);
+
+    // В production бронирование только локально, без API
+    if (!USE_API) {
+      setSlots((prev) =>
+        prev.map((s) =>
+          s.id === slotId ? { ...s, status: 'mine', clientName: userId } : s,
+        ),
+      );
+      setMyBookings((prev) => {
+        const existing = prev.find((b) => b.id === slotId);
+        if (existing) return prev;
+        const slot = slots.find((s) => s.id === slotId);
+        if (!slot) return prev;
+        return [...prev, { ...slot, status: 'mine', clientName: userId }];
+      });
+      setBookingLoading(null);
+      return;
+    }
+
     try {
       const res = await fetch(`${API_BASE}/slots/${slotId}/book`, {
         method: 'POST',
@@ -84,20 +147,9 @@ const App: React.FC = () => {
       }
 
       await Promise.all([loadSlots(selectedDate), loadMyBookings()]);
-    } catch {
-      // если API не работает, всё равно позволим пользователю «забронировать» слот локально
-      setSlots((prev) =>
-        prev.map((s) =>
-          s.id === slotId ? { ...s, status: 'mine', clientName: userId } : s,
-        ),
-      );
-      setMyBookings((prev) => {
-        const existing = prev.find((b) => b.id === slotId);
-        if (existing) return prev;
-        const slot = slots.find((s) => s.id === slotId);
-        if (!slot) return prev;
-        return [...prev, { ...slot, status: 'mine', clientName: userId }];
-      });
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to book slot via API', e);
     } finally {
       setBookingLoading(null);
     }
