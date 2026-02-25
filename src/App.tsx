@@ -119,7 +119,7 @@ const App: React.FC = () => {
     }
   }, [activeTab, userId]);
 
-  const days = getUpcomingDays(7);
+  const days = getUpcomingDays(getDaysUntilMarch20());
 
   return (
     <div className="app">
@@ -288,6 +288,17 @@ function getUpcomingDays(count: number) {
     });
   }
   return days;
+}
+
+function getDaysUntilMarch20(): number {
+  const todayDate = new Date();
+  const year = todayDate.getFullYear();
+  const target = new Date(year, 2, 20); // 20 марта
+  if (todayDate > target) {
+    return 1;
+  }
+  const diffMs = target.getTime() - todayDate.getTime();
+  return Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
 }
 
 function formatDate(dateStr: string) {
