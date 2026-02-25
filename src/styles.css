@@ -32,6 +32,7 @@ body {
 
 .app-header {
   text-align: center;
+  margin-top: 8px;
 }
 
 .app-header h1 {
