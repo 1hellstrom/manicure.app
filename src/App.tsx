@@ -196,29 +196,38 @@ const SlotCard: React.FC<SlotCardProps> = ({ slot, onBook, loading }) => {
   const isFree = slot.status === 'free';
   const isMine = slot.status === 'mine';
 
-  let label = `${slot.time} · ${slot.masterName}`;
-  let className = 'slot-card';
-
-  if (isFree) {
-    className += ' free';
-  } else if (isMine) {
-    className += ' mine';
-    label += ' (моя запись)';
-  } else {
-    className += ' booked';
-    label += ' (занят)';
-  }
+  const className =
+    'slot-card ' + (isFree ? 'free' : isMine ? 'mine' : 'booked');
 
   return (
-    <button
-      className={className}
-      disabled={!isFree || loading}
-      onClick={() => onBook(slot.id)}
-    >
-      <span>{label}</span>
-      {isFree && !loading && <span className="slot-cta">Записаться</span>}
-      {loading && <span className="slot-cta">Бронируем...</span>}
-    </button>
+    <div className={className}>
+      <div className="slot-info">
+        <div className="slot-time">{slot.time}</div>
+        <div className="slot-master">{slot.masterName}</div>
+        {isMine && slot.clientName && (
+          <div className="slot-client">Вы: {slot.clientName}</div>
+        )}
+        {!isFree && !isMine && (
+          <div className="slot-status-text">Слот занят</div>
+        )}
+      </div>
+      <div className="slot-actions">
+        {isFree ? (
+          <button
+            type="button"
+            className="slot-cta-btn"
+            disabled={loading}
+            onClick={() => onBook(slot.id)}
+          >
+            {loading ? 'Бронируем...' : 'Записаться'}
+          </button>
+        ) : isMine ? (
+          <span className="slot-tag">Моя запись</span>
+        ) : (
+          <span className="slot-tag">Занято</span>
+        )}
+      </div>
+    </div>
   );
 };
 
