@@ -19,6 +19,7 @@ const App: React.FC = () => {
   const [myBookings, setMyBookings] = useState<Slot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [bookingLoading, setBookingLoading] = useState<string | null>(null);
+  const [apiAvailable, setApiAvailable] = useState(true);
 
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
@@ -40,8 +41,16 @@ const App: React.FC = () => {
       const params = new URLSearchParams({ date });
       if (userId) params.append('userId', userId);
       const res = await fetch(`${API_BASE}/slots?${params.toString()}`);
+      if (!res.ok) {
+        throw new Error('Bad status');
+      }
       const data: Slot[] = await res.json();
+      setApiAvailable(true);
       setSlots(data);
+    } catch {
+      setApiAvailable(false);
+      const fallback = generateLocalSlots(date);
+      setSlots(fallback);
     } finally {
       setLoadingSlots(false);
     }
@@ -49,9 +58,19 @@ const App: React.FC = () => {
 
   async function loadMyBookings() {
     if (!userId) return;
-    const res = await fetch(`${API_BASE}/me/bookings?userId=${userId}`);
-    const data: Slot[] = await res.json();
-    setMyBookings(data);
+    if (!apiAvailable) {
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/me/bookings?userId=${userId}`);
+      if (!res.ok) {
+        throw new Error('Bad status');
+      }
+      const data: Slot[] = await res.json();
+      setMyBookings(data);
+    } catch {
+      setApiAvailable(false);
+    }
   }
 
   async function handleBook(slotId: string) {
@@ -61,19 +80,34 @@ const App: React.FC = () => {
     }
     setBookingLoading(slotId);
     try {
-      const res = await fetch(`${API_BASE}/slots/${slotId}/book`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
-      });
+      if (apiAvailable) {
+        const res = await fetch(`${API_BASE}/slots/${slotId}/book`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId }),
+        });
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        alert(data.error || 'Слот уже занят или произошла ошибка.');
-        return;
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          alert(data.error || 'Слот уже занят или произошла ошибка.');
+          return;
+        }
+
+        await Promise.all([loadSlots(selectedDate), loadMyBookings()]);
+      } else {
+        setSlots((prev) =>
+          prev.map((s) =>
+            s.id === slotId ? { ...s, status: 'mine', clientName: userId } : s,
+          ),
+        );
+        setMyBookings((prev) => {
+          const existing = prev.find((b) => b.id === slotId);
+          if (existing) return prev;
+          const slot = slots.find((s) => s.id === slotId);
+          if (!slot) return prev;
+          return [...prev, { ...slot, status: 'mine', clientName: userId }];
+        });
       }
-
-      await Promise.all([loadSlots(selectedDate), loadMyBookings()]);
     } finally {
       setBookingLoading(null);
     }
@@ -220,6 +254,18 @@ const ProfileView: React.FC<ProfileViewProps> = ({ myBookings }) => {
 function today(): string {
   const d = new Date();
   return d.toISOString().slice(0, 10);
+}
+
+function generateLocalSlots(date: string): Slot[] {
+  const times = ['10:00', '12:00', '14:00', '16:00', '18:00'];
+  const master = 'Марина';
+  return times.map((time) => ({
+    id: `${date}-${time}`,
+    date,
+    time,
+    status: 'free',
+    masterName: master,
+  }));
 }
 
 function getUpcomingDays(count: number) {
